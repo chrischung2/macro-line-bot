@@ -2,21 +2,24 @@ import mysql.connector
 from datetime import datetime, timedelta
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
-from credentials import DB_CONFIG, LINE_ACCESS_TOKEN, USER_ID  # ✅ Import credentials
+from credentials import DB_CONFIG, LINE_ACCESS_TOKEN, USER_ID  # Import credentials
 import time
 
+# Helper function to log messages with a timestamp
+def log(message):
+    print(f"[{datetime.now()}] {message}")
 
 # ✅ Function to Check for Updates in the Last 24 Hours
 def check_new_updates():
     try:
-        # 🔹 Connect to MySQL Database
+        # Connect to MySQL Database
         db = mysql.connector.connect(**DB_CONFIG)
         cursor = db.cursor(buffered=True)
 
-        # 🔹 Get the Timestamp for 24 Hours Ago
+        # Get the Timestamp for 24 Hours Ago
         yesterday = datetime.now() - timedelta(days=1)
 
-        # 🔹 Fetch Updated Indicators and Their Latest & Previous Values
+        # Fetch Updated Indicators and Their Latest & Previous Values
         query = """
             SELECT i.indicator_name, i.abbreviation, d.value AS latest_value, 
                    (SELECT d2.value FROM indicator_data d2 
@@ -34,20 +37,20 @@ def check_new_updates():
         cursor.execute(query, (yesterday,))
         updated_data = cursor.fetchall()
         elapsed = time.time() - start_time
-        print(f"DEBUG: Query executed in {elapsed: .2f} seconds.")
+        log(f"DEBUG: Query executed in {elapsed:.2f} seconds.")
 
         if updated_data:
-            print(f"✅ {len(updated_data)} new data points found! Sending notification...")
+            log(f"✅ {len(updated_data)} new data points found! Sending notification...")
             return updated_data
         else:
-            print("✅ No new data found in the last 24 hours.")
+            log("✅ No new data found in the last 24 hours.")
             return []
 
     except mysql.connector.Error as err:
-        print(f"❌ Database Error: {err}")
+        log(f"❌ Database Error: {err}")
         return []
     except KeyboardInterrupt:
-        print("Query interrupted by user.")
+        log("Query interrupted by user.")
         return []
 
     finally:
@@ -55,10 +58,9 @@ def check_new_updates():
             try:
                 cursor.close()
             except Exception as e:
-                print(f"Error closing cursor: {e}")
+                log(f"Error closing cursor: {e}")
         if 'db' in locals() and db.is_connected():
             db.close()
-
 
 # ----------------------------------------------------------------------------
 # Helper function for formatting values based on the indicator abbreviation.
@@ -113,7 +115,6 @@ def format_value(abbrev, value):
     else:
         return f"{num:.2f}"
 
-
 # ----------------------------------------------------------------------------
 # ✅ Function to Send Notification via LINE
 def send_update_notification(updated_data):
@@ -133,15 +134,16 @@ def send_update_notification(updated_data):
         line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
         # Synchronously send the push message
         line_bot_api.push_message(USER_ID, TextSendMessage(text=message))
-        print("✅ Notification sent successfully.")
+        log("✅ Notification sent successfully.")
     except Exception as e:
-        print(f"❌ Failed to send notification: {e}")
+        log(f"❌ Failed to send notification: {e}")
 
 # ----------------------------------------------------------------------------
 # ✅ Main Execution
 if __name__ == "__main__":
+    log("auto_send_if_updated.py started.")
     new_data = check_new_updates()
     if not new_data:
-        print("Exiting: No updates to process.")
+        log("Exiting: No updates to process.")
     else:
         send_update_notification(new_data)

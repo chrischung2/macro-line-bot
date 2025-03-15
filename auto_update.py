@@ -4,6 +4,10 @@ import mysql.connector
 from datetime import datetime
 from credentials import DB_CONFIG  # ✅ Import DB_CONFIG
 
+# Helper function to log messages with timestamp
+def log(message):
+    print(f"[{datetime.now()}] {message}")
+
 # ✅ Function to Fetch Data from FRED API
 def fetch_fred_data(series_id, api_key, last_recorded_date):
     url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={api_key}&file_type=json"
@@ -51,7 +55,7 @@ def update_database():
             # ✅ If there's no existing data, set default start date
             last_recorded_date = last_recorded_date if last_recorded_date else "1900-01-01"
 
-            print(f"🔄 Fetching data for {series_id} after {last_recorded_date}...")
+            log(f"🔄 Fetching data for {series_id} after {last_recorded_date}...")
 
             # ✅ Fetch only new data
             data = fetch_fred_data(series_id, fred_api_key, last_recorded_date)
@@ -66,21 +70,22 @@ def update_database():
                     """, (indicator_id, record_date, value))
                     updates_made += 1
                 except mysql.connector.Error as err:
-                    print(f"❌ Error inserting data for {series_id}: {err}")
+                    log(f"❌ Error inserting data for {series_id}: {err}")
 
         db.commit()
-        print(f"✅ {updates_made} new data points updated in the database.")
+        log(f"✅ {updates_made} new data points updated in the database.")
 
     except mysql.connector.Error as err:
-        print(f"❌ Database Connection Error: {err}")
+        log(f"❌ Database Connection Error: {err}")
 
     finally:
         if 'cursor' in locals() and cursor is not None:
             cursor.close()
         if 'db' in locals() and db.is_connected():
             db.close()
-        print("✅ Database connection closed.")
+        log("✅ Database connection closed.")
 
 # ✅ Run the `auto_update` function
 if __name__ == "__main__":
+    log("auto_update.py started.")
     update_database()
