@@ -1,0 +1,20 @@
+# Ignore logs
+logs/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Optionally ignore virtual environments (if any)
+venv/
+
+# Ignore history files
+history/
+older versions/
+test.py
+
+# credentials
+credentials.py
+
+#Others
+.DS_Store
